@@ -1,6 +1,8 @@
 <?php
 namespace Woof\View;
 
+use Woof\Theme\Theme;
+
 use function Woof\slugify;
 
 class View
@@ -12,95 +14,78 @@ class View
      */
     protected $theme;
 
-    public function __construct($theme)
+    protected $file;
+
+
+    /**
+     * @var Template[]
+     */
+    protected $templates = [];
+
+    protected $parts = [];
+
+
+    public function __construct($theme, $file = null)
     {
         $this->theme = $theme;
+        $this->file = $file;
+
+        $this->template = new Template($this, $file);
+    }
+
+    public function render()
+    {
+        return $this->loadTemplate($this->file);
+    }
+
+    /**
+     * @return Theme
+     */
+    public function getTheme()
+    {
+        return $this->theme;
     }
 
 
 
 
-    public function partial($slug, $name = null, $data = [])
+    public function loadTemplate($name, $data = array())
     {
-        if($name === null) {
-            $name = slugify($slug);
-        }
 
-        // source file : public\wp\wp-includes\general-template.php
-        do_action( "get_template_part_{$slug}", $slug, $name, $data );
-
-        $templates = array();
-        $name      = (string) $name;
-        if ( '' !== $name ) {
-            $templates[] = "{$slug}-{$name}.php";
-        }
-
-        $templates[] = "{$slug}.php";
-        do_action( 'get_template_part', $slug, $name, $templates, $data);
-
-        $template = $this->locateTemplate( $templates, true, false, $data);
+        $template = new Template($this, $name, $data);
+        $this->templates[$name] = $template;
 
 
-        if($template) {
-            $this->loadTemplate($template);
-            return $template;
+        return $template;
+    }
+
+
+    public function getPart($slug)
+    {
+        if(array_key_exists($slug, $this->parts)) {
+            return $this->parts[$slug];
         }
         else {
             return false;
         }
     }
 
-    public function locateTemplate($template_names, $load = false, $require_once = true, $data = array())
+    public function setPart($slug, $content)
     {
-        $located = '';
-        foreach ( (array) $template_names as $template_name ) {
-            if ( ! $template_name ) {
-                continue;
-            }
-            if ( file_exists( STYLESHEETPATH . '/' . $template_name ) ) {
-                $located = STYLESHEETPATH . '/' . $template_name;
-                break;
-            } elseif ( file_exists( TEMPLATEPATH . '/' . $template_name ) ) {
-                $located = TEMPLATEPATH . '/' . $template_name;
-                break;
-            } elseif ( file_exists( ABSPATH . WPINC . '/theme-compat/' . $template_name ) ) {
-                $located = ABSPATH . WPINC . '/theme-compat/' . $template_name;
-                break;
-            }
+        if($content === true) {
+            $this->parts[$slug] = '';
+            ob_start();
+            return $this;
         }
-        return $located;
+        $this->parts[$slug] = $content;
+        return $this;
     }
 
-    public function loadTemplate($_template_file, $require_once = true, $data = array(), $extract = true)
+    public function endPart($slug)
     {
-        // source file : public\wp\wp-includes\general-template.php
-        global $posts, $post, $wp_did_header, $wp_query, $wp_rewrite, $wpdb, $wp_version, $wp, $id, $comment, $user_ID;
-
-        if(!array_key_exists('theme', $data)) {
-            $data['theme'] = $this->theme;
-        }
-
-        if ( is_array( $wp_query->query_vars ) ) {
-            extract( $wp_query->query_vars, EXTR_SKIP );
-        }
-
-        if ( isset( $s ) ) {
-            $s = esc_attr( $s );
-        }
-
-        if($extract) {
-            extract($data);
-        }
-
-        if ( $require_once ) {
-            require_once $_template_file;
-        } else {
-            require $_template_file;
-        }
+        $this->parts[$slug] = ob_get_clean();
+        return $this;
     }
-
-
-
 
 
     public function getHeader()
@@ -126,6 +111,11 @@ class View
             }
         }
         return $posts;
+    }
+
+    public function __toString()
+    {
+        return (string) $this->render();
     }
 }
 
