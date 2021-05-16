@@ -22,6 +22,13 @@ class View
      */
     protected $templates = [];
 
+
+
+    /**
+     * @var Template
+     */
+    protected $template;
+
     protected $parts = [];
 
 
