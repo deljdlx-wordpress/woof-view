@@ -1,20 +1,13 @@
 <?php
 namespace Woof\View;
 
-use Woof\Theme\Theme;
-
-use function Woof\slugify;
 
 class View
 {
 
-
-    /**
-     * @var Theme
-     */
-    protected $theme;
-
     protected $file;
+
+    protected $variables = [];
 
 
     /**
@@ -32,37 +25,75 @@ class View
     protected $parts = [];
 
 
-    public function __construct($theme, $file = null)
+    public function __construct($file = null)
     {
-        $this->theme = $theme;
         $this->file = $file;
-
         $this->template = new Template($this, $file);
     }
 
+    /**
+     * @param string|array $variableNameOrVariableList
+     * @param mixed $value
+     * @return this
+     */
+    public function set($variableNameOrVariableList, $value = null)
+    {
+        if(is_array($variableNameOrVariableList)) {
+            foreach($variableNameOrVariableList as $key => $value) {
+                $this->variables[$key] = $value;
+            }
+        }
+        else {
+            $this->variables[$variableNameOrVariableList] = $value;
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string $variableName
+     * @param mixed $default
+     * @return mixed
+     */
+    public function get($variableName, $default = null)
+    {
+        if(array_key_exists($variableName, $this->variables)) {
+            return $this->variables[$variableName];
+        }
+        else {
+            return $default;
+        }
+    }
+
+    /**
+     * @return array
+     */
+    public function getAll()
+    {
+        return $this->variables;
+    }
+
+
+    /**
+     *
+     * @return string
+     */
     public function render()
     {
         return $this->loadTemplate($this->file);
     }
 
+
+
     /**
-     * @return Theme
+     * @param string $name
+     * @param array $data
+     * @return Template
      */
-    public function getTheme()
+    public function loadTemplate($name, $data = [])
     {
-        return $this->theme;
-    }
-
-
-
-
-    public function loadTemplate($name, $data = array())
-    {
-
         $template = new Template($this, $name, $data);
         $this->templates[$name] = $template;
-
-
         return $template;
     }
 
@@ -77,6 +108,9 @@ class View
         }
     }
 
+    /**
+     * @return this
+     */
     public function setPart($slug, $content)
     {
         if($content === true) {
@@ -88,6 +122,9 @@ class View
         return $this;
     }
 
+    /**
+     * @return this
+     */
     public function endPart($slug)
     {
         $this->parts[$slug] = ob_get_clean();
@@ -95,12 +132,18 @@ class View
     }
 
 
+    /**
+     * @return this
+     */
     public function getHeader()
     {
         wp_head();
         return $this;
     }
 
+    /**
+     * @return this
+     */
     public function getFooter()
     {
         wp_footer();

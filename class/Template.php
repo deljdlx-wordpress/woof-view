@@ -1,8 +1,13 @@
 <?php
 namespace Woof\View;
 
+use Woof\Traits\WordpressBinded;
+
 class Template
 {
+
+
+    use WordpressBinded;
 
     protected $view;
     protected $file;
@@ -31,7 +36,6 @@ class Template
         // source file : public\wp\wp-includes\general-template.php
         // do_action( "get_template_part_{$slug}", $slug, $name, $data );
         // do_action( 'get_template_part', $slug, $name, $templates, $data);
-
         $template = new Template($this->view, $slug, $data);
         return $template;
 
@@ -39,6 +43,10 @@ class Template
 
     public function locate($file)
     {
+        if(is_file($file)) {
+            return $file;
+        }
+
 
         $templates = array($file);
 
@@ -75,7 +83,10 @@ class Template
     {
 
         ob_start();
-        global $posts, $post, $wp_did_header, $wp_query, $wp_rewrite, $wpdb, $wp_version, $wp, $id, $comment, $user_ID;
+
+        // $wp_query is imported from wp global scope;
+        extract($this->getGlobals());
+
 
         if ( is_array( $wp_query->query_vars ) ) {
             extract( $wp_query->query_vars, EXTR_SKIP );
@@ -83,9 +94,9 @@ class Template
 
         extract($this->variables);
 
-        $theme = $this->view->getTheme();
         $template = $this;
         $view = $this->view;
+        extract($this->view->getAll());
 
         include($this->file);
         return ob_get_clean();
